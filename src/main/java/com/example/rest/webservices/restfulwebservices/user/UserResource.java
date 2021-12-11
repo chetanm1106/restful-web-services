@@ -1,11 +1,19 @@
 package com.example.rest.webservices.restfulwebservices.user;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 import java.net.URI;
 import java.util.Date;
 import java.util.List;
 
+import javax.validation.Valid;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,20 +34,41 @@ public class UserResource {
 	}
 
 	@GetMapping("/users/{id}")
-	public User fingOne(@PathVariable Integer id) {
+	public EntityModel<User> fingOne(@PathVariable Integer id) {
 		User user = service.findOne(id);
 		if (user == null) {
 			throw new UserNotFoundException("id " + id);
 		}
-		return user;
+
+		EntityModel<User> model = EntityModel.of(user);
+
+		WebMvcLinkBuilder linkToUsers = linkTo(methodOn(this.getClass()).findAll());
+		model.add(linkToUsers.withRel("all-users"));
+
+//		WebMvcLinkBuilder linkToDelete = linkTo(methodOn(this.getClass()).deleteUser(id));
+//		model.add(linkToDelete.withRel("delete-user"));
+
+		return model;
 	}
 
 	@PostMapping("/users")
-	public ResponseEntity<Object> addUser(@RequestBody User user) {
+	public ResponseEntity<Object> addUser(@Valid @RequestBody User user) {
 		User savedUser = service.save(user);
 		URI location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(savedUser.getId())
 				.toUri();
 		return ResponseEntity.created(location).build();
+	}
+
+	@DeleteMapping("/users/{id}")
+	public boolean deleteUser(@PathVariable int id) {
+		User user = service.deleteById(id);
+
+		if (user == null) {
+			throw new UserNotFoundException("id " + id);
+		}
+
+		return true;
+
 	}
 
 }
